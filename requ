@@ -1,0 +1,5 @@
+streamlit==1.32.0
+ultralytics==8.0.0       # Für YOLOv8
+Pillow==10.1.0          # Bildverarbeitung
+numpy==1.23.5           # Für numerische Operationen
+sqlite3==0.0.1          # SQLite-Datenbank (standardmäßig in Python enthalten)
