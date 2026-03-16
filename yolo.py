@@ -1,64 +1,42 @@
-import subprocess
-import sys
-
-# Installiere benötigte Pakete
-def install_packages():
-    required_packages = ["streamlit==1.32.0", "ultralytics==8.0.0", "Pillow==10.1.0", "opencv-python-headless==4.8.0.74"]
-    for package in required_packages:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", package])
-
-# Installiere Pakete beim Start
-install_packages()
-
 import streamlit as st
-from ultralytics import YOLO
-from PIL import Image
 import cv2
 import numpy as np
+from PIL import Image
+from ultralytics import YOLO
 
-# Titel der App
-st.title("📷 YOLOv8 Objekterkennung")
-st.markdown("""
-Detektiere Objekte in Bildern mit **YOLOv8**.
-""")
-
-# Modell laden
+# Funktion zum Laden des YOLO-Modells
 @st.cache_resource
 def load_model():
-    return YOLO("yolov8n.pt")  # Nano-Version (kleinstes Modell)
+    return YOLO("yolov8n.pt")  # Verwende das Nano-Modell (kleinste Version)
 
-model = load_model()
-
-# Datei-Upload
-uploaded_file = st.file_uploader("Lade ein Bild hoch", type=["jpg", "png", "jpeg"])
-
-if uploaded_file is not None:
-    # Bild laden und in NumPy-Array konvertieren
-    image = Image.open(uploaded_file)
-    image_np = np.array(image)
-
-    # Bild von RGB in BGR umwandeln (OpenCV verwendet BGR statt RGB)
-    image_bgr = cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR)
-
-    # Objekterkennung durchführen
-    results = model.predict(source=image_bgr, device="cpu")  # CPU verwenden
-
-    # Ergebnisse visualisieren
-    annotated_image = results[0].plot()
-    annotated_image = cv2.cvtColor(annotated_image, cv2.COLOR_BGR2RGB)
-
-    # Originalbild und detektiertes Bild anzeigen
-    col1, col2 = st.columns(2)
-    with col1:
-        st.image(image, caption="Originalbild", use_column_width=True)
-    with col2:
-        st.image(annotated_image, caption="Detektiertes Bild", use_column_width=True)
-
-    # Detektierte Objekte auflisten
-    st.subheader("Detektierte Objekte")
+# Funktion zum Zeichnen der Bounding Boxes
+def draw_boxes(image, results):
     for result in results:
-        for box in result.boxes:
-            class_id = int(box.cls)
-            label = model.names[class_id]
-            confidence = float(box.conf)
-            st.write(f"- **{label}** (Konfidenz: {confidence:.2f})")
+        boxes = result.boxes
+        for box in boxes:
+            x1, y1, x2, y2 = map(int, box.xyxy[0])
+            label = result.names[int(box.cls)]
+            conf = float(box.conf)
+            cv2.rectangle(image, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            cv2.putText(image, f"{label} {conf:.2f}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+    return image
+
+# Streamlit-App
+st.title("YOLOv8 Objekterkennung")
+st.write("Lade ein Bild hoch, um Objekte zu erkennen.")
+
+# Bild hochladen
+uploaded_file = st.file_uploader("Wähle ein Bild...", type=["jpg", "jpeg", "png"])
+if uploaded_file is not None:
+    image = Image.open(uploaded_file)
+    image = np.array(image)
+
+    # YOLO-Modell laden
+    model = load_model()
+
+    # Objekte erkennen
+    results = model(image)
+
+    # Ergebnis anzeigen
+    output_image = draw_boxes(image.copy(), results)
+    st.image(output_image, caption="Erkannte Objekte", use_column_width=True)
