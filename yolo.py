@@ -1,54 +1,64 @@
+import subprocess
+import sys
+
+# Installiere benötigte Pakete
+def install_packages():
+    required_packages = ["streamlit==1.32.0", "ultralytics==8.0.0", "Pillow==10.1.0", "opencv-python-headless==4.8.0.74"]
+    for package in required_packages:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+
+# Installiere Pakete beim Start
+install_packages()
+
 import streamlit as st
+from ultralytics import YOLO
+from PIL import Image
 import cv2
 import numpy as np
-from PIL import Image
-from ultralytics import YOLO
 
-# App-Konfiguration
-st.set_page_config(layout="wide")
-st.title("🚀 Ultralytics YOLOv8 Objekterkennung")
+# Titel der App
+st.title("📷 YOLOv8 Objekterkennung")
 st.markdown("""
-**Keine Torch-Abhängigkeiten** • Läuft auf CPU/GPU • Einfache Installation
+Detektiere Objekte in Bildern mit **YOLOv8**.
 """)
 
-# Modell-Cache
+# Modell laden
 @st.cache_resource
 def load_model():
-    try:
-        return YOLO('yolov8n.pt')  # Automatische Geräteerkennung
-    except Exception as e:
-        st.error(f"Modell konnte nicht geladen werden: {e}")
-        return None
+    return YOLO("yolov8n.pt")  # Nano-Version (kleinstes Modell)
 
-# Bildverarbeitung
-def process_image(upload, model):
-    img = Image.open(upload)
-    img_np = np.array(img)
-    img_bgr = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)
-    
-    # Inferenz mit automatischer Geräteerkennung
-    results = model(img_bgr, verbose=False)  
-    
-    # Visualisierung
-    annotated = results[0].plot()
-    annotated_rgb = cv2.cvtColor(annotated, cv2.COLOR_BGR2RGB)
-    return img, annotated_rgb, results[0]
+model = load_model()
 
-# UI
-upload = st.file_uploader("Bild hochladen", type=["jpg","png","jpeg"])
-if upload:
-    model = load_model()
-    if model:
-        with st.spinner("Analysiere Bild..."):
-            original, detected, results = process_image(upload, model)
-            
-        col1, col2 = st.columns(2)
-        with col1:
-            st.image(original, caption="Original", use_column_width=True)
-        with col2:
-            st.image(detected, caption="Erkannte Objekte", use_column_width=True)
-            
-        st.divider()
-        st.subheader("Detektionsergebnisse")
-        for box in results.boxes:
-            st.write(f"- {results.names[int(box.cls)]} (Confidence: {box.conf:.2f})")
+# Datei-Upload
+uploaded_file = st.file_uploader("Lade ein Bild hoch", type=["jpg", "png", "jpeg"])
+
+if uploaded_file is not None:
+    # Bild laden und in NumPy-Array konvertieren
+    image = Image.open(uploaded_file)
+    image_np = np.array(image)
+
+    # Bild von RGB in BGR umwandeln (OpenCV verwendet BGR statt RGB)
+    image_bgr = cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR)
+
+    # Objekterkennung durchführen
+    results = model.predict(source=image_bgr, device="cpu")  # CPU verwenden
+
+    # Ergebnisse visualisieren
+    annotated_image = results[0].plot()
+    annotated_image = cv2.cvtColor(annotated_image, cv2.COLOR_BGR2RGB)
+
+    # Originalbild und detektiertes Bild anzeigen
+    col1, col2 = st.columns(2)
+    with col1:
+        st.image(image, caption="Originalbild", use_column_width=True)
+    with col2:
+        st.image(annotated_image, caption="Detektiertes Bild", use_column_width=True)
+
+    # Detektierte Objekte auflisten
+    st.subheader("Detektierte Objekte")
+    for result in results:
+        for box in result.boxes:
+            class_id = int(box.cls)
+            label = model.names[class_id]
+            confidence = float(box.conf)
+            st.write(f"- **{label}** (Konfidenz: {confidence:.2f})")
