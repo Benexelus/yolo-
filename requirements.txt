@@ -1,0 +1,4 @@
+streamlit==1.32.0
+ultralytics==8.0.0       # Für YOLOv8 (integriertes Modell)
+Pillow==10.1.0          # Bildverarbeitung
+numpy==1.23.5           # Für numerische Operationen
