@@ -7,7 +7,7 @@ import numpy as np
 # Titel der App
 st.title("📷 YOLOv8 Objekterkennung")
 st.markdown("""
-Detektiere Objekte in Bildern mit **YOLOv8** (CPU-only).
+Detektiere Objekte in Bildern mit **YOLOv8** (ohne PyTorch).
 """)
 
 # Modell laden
@@ -29,7 +29,7 @@ if uploaded_file is not None:
     image_bgr = cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR)
 
     # Objekterkennung durchführen
-    results = model.predict(source=image_bgr, device="cpu")  # CPU verwenden
+    results = model.predict(source=image_bgr)  # Ultralytics kümmert sich um den Rest
 
     # Ergebnisse visualisieren
     annotated_image = results[0].plot()
