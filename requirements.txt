@@ -2,4 +2,5 @@ streamlit==1.32.0
 ultralytics==8.0.0
 Pillow==10.1.0
 numpy==1.23.5
-opencv-python-headless==4.8.0.74  # Ohne libGL-Abhängigkeit
+opencv-python-headless==4.8.0.74
+setuptools==68.0.0  # Füge diese Zeile hinzu
