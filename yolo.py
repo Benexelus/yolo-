@@ -5,20 +5,24 @@ from PIL import Image
 
 # Signal-Fehler vermeiden (für Streamlit Cloud)
 os.environ["STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION"] = "False"
+os.environ["OMP_NUM_THREADS"] = "1"  # Deaktiviere OpenMP-Multithreading
+os.environ["MKL_NUM_THREADS"] = "1"  # Deaktiviere MKL-Multithreading
+os.environ["OPENBLAS_NUM_THREADS"] = "1"  # Deaktiviere OpenBLAS-Multithreading
 
 # Titel der App
 st.title("🔍 Fundbüro-Verwaltung")
 st.write("Lade Bilder hoch, füge Personalien hinzu und verwalte Fundgegenstände.")
 
 # YOLO-Modell cachen (verhindert Thread-Probleme)
-@st.cache_resource  # Wichtig für Streamlit Cloud!
+@st.experimental_singleton
 def load_yolo_model():
-    return YOLO("yolov8n.pt")  # Integriertes Modell
+    model = YOLO("yolov8n.pt")
+    return model
 
 # Bild klassifizieren
 def classify_image(image):
     model = load_yolo_model()
-    results = model.predict(image)  # Läuft im Haupt-Thread
+    results = model.predict(image, num_threads=1)  # Setze num_threads=1
     return results[0].boxes
 
 # Hauptfunktion
