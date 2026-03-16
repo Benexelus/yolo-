@@ -1,52 +1,63 @@
-import os
 import streamlit as st
-from ultralytics import YOLO
+import cv2
 from PIL import Image
-import torch
+import numpy as np
 
-# ===============================================
-# KRITISCHE EINSTELLUNGEN (Behebt den Signal-Fehler)
-# ===============================================
-os.environ["STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION"] = "False"
-os.environ["OMP_NUM_THREADS"] = "1"
-os.environ["MKL_NUM_THREADS"] = "1"
-os.environ["OPENBLAS_NUM_THREADS"] = "1"
-torch.set_num_threads(1)  # PyTorch auf Single-Thread forcieren
+# Titel der App
+st.title("🏞️ Bildverarbeitung mit OpenCV")
 
-# ===============================================
-# APP-LOGIK
-# ===============================================
-st.title("🔍 Fundbüro-Verwaltung")
+# Beschreibung der App
+st.markdown("""
+Diese App verwendet **OpenCV** und **Pillow**, um Bilder zu verarbeiten. Du kannst ein Bild hochladen und es in Graustufen umwandeln.
+""")
 
-@st.experimental_singleton  # Besser als cache_resource für YOLO
-def load_model():
-    """Lädt YOLO-Modell mit Thread-Sicherheit"""
-    model = YOLO("yolov8n.pt")
-    # Warmup-Run (wichtig für Thread-Synchronisation)
-    model.predict("dummy.jpg", imgsz=64, verbose=False, num_threads=1)  
-    return model
+# Datei-Upload
+uploaded_file = st.file_uploader("Lade ein Bild hoch", type=["jpg", "png", "jpeg"])
 
-def analyze_image(image):
-    """Bildanalyse mit Thread-Sicherheit"""
-    model = load_model()
-    results = model.predict(image, num_threads=1, verbose=False)
-    return results[0].boxes
+if uploaded_file is not None:
+    # Bild in ein PIL-Image-Objekt laden
+    image = Image.open(uploaded_file)
 
-# ===============================================
-# UI & HAUPTHANDLUNG
-# ===============================================
-uploaded_file = st.file_uploader("Bild hochladen", type=["jpg", "png"])
+    # Bild als NumPy-Array konvertieren (für OpenCV)
+    image_np = np.array(image)
 
-if uploaded_file:
-    img = Image.open(uploaded_file)
-    st.image(img, caption="Hochgeladenes Bild")
-    
-    if st.button("Analyse starten"):
-        with st.spinner("Analysiere..."):
-            try:
-                boxes = analyze_image(img)
-                st.success("Ergebnisse:")
-                for box in boxes:
-                    st.write(f"- Objekt: {box.cls}, Konfidenz: {box.conf:.2f}")
-            except Exception as e:
-                st.error(f"Fehler: {str(e)}")
+    # Bild von RGB in BGR umwandeln (OpenCV verwendet BGR statt RGB)
+    image_bgr = cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR)
+
+    # Originalbild anzeigen
+    st.subheader("Originalbild")
+    st.image(image, caption="Originalbild", use_column_width=True)
+
+    # Graustufenbild erstellen
+    gray_image = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2GRAY)
+
+    # Graustufenbild anzeigen
+    st.subheader("Graustufenbild")
+    st.image(gray_image, caption="Graustufenbild", use_column_width=True)
+
+    # Option: Kantenerkennung mit Canny
+    st.markdown("""
+    **Optional:** Du kannst auch Kanten im Bild erkennen.
+    """)
+    edges = cv2.Canny(gray_image, 100, 200)  # Canny-Kantenerkennung
+
+    # Kantenerkennungsbild anzeigen
+    st.subheader("Kantenerkennung (Canny)")
+    st.image(edges, caption="Kantenerkennung", use_column_width=True)
+
+    # Option: Bild speichern
+    st.markdown("""
+    Du kannst das verarbeitete Bild herunterladen.
+    """)
+    # Graustufenbild als Datei speichern
+    gray_image_pil = Image.fromarray(gray_image)
+    gray_image_pil.save("gray_image.png")
+
+    # Download-Link für das Graustufenbild
+    with open("gray_image.png", "rb") as file:
+        btn = st.download_button(
+            label="Graustufenbild herunterladen",
+            data=file,
+            file_name="gray_image.png",
+            mime="image/png"
+        )
