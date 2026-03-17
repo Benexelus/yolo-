@@ -27,3 +27,41 @@ if uploaded_file is not None:
     st.success("Top-Ergebnisse:")
     for i, res in enumerate(results[:5], 1):
         st.write(f"{i}. **{res['label']}** – {res['score']:.1%} sicher")
+
+
+# ===== Ergänzung: Galerie für ≥90% sichere Bilder =====
+
+import os
+
+GALLERY_DIR = "gallery"
+os.makedirs(GALLERY_DIR, exist_ok=True)
+
+if uploaded_file is not None:
+    best = results[0]
+
+    if best["score"] >= 0.90:
+        label = best["label"].replace(" ", "_")
+        filename = f"{label}.png"
+        filepath = os.path.join(GALLERY_DIR, filename)
+
+        image.save(filepath)
+
+        st.success(f"Bild wurde in der Galerie gespeichert als: {filename}")
+
+
+# ===== Galerie anzeigen =====
+
+st.subheader("Galerie (Bilder mit ≥90% Sicherheit)")
+
+images = os.listdir(GALLERY_DIR)
+
+if len(images) > 0:
+    cols = st.columns(4)
+
+    for i, img in enumerate(images):
+        path = os.path.join(GALLERY_DIR, img)
+
+        with cols[i % 4]:
+            st.image(path, caption=img.replace("_", " ").replace(".png", ""))
+else:
+    st.write("Noch keine Bilder in der Galerie.")
