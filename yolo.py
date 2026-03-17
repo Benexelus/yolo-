@@ -49,27 +49,78 @@ if page == "Bilder hochladen":
 
         if best["score"] >= 0.90:
             label = best["label"].replace(" ", "_")
-            filename = f"{label}.png"
-            filepath = os.path.join(GALLERY_DIR, filename)
+
+            # ===== NEU: Kategorie-Ordner erstellen =====
+            category_folder = os.path.join(GALLERY_DIR, label)
+            os.makedirs(category_folder, exist_ok=True)
+
+            # Dateiname erzeugen (damit nichts überschrieben wird)
+            existing = len(os.listdir(category_folder))
+            filename = f"{label}_{existing+1}.png"
+            filepath = os.path.join(category_folder, filename)
 
             image.save(filepath)
 
-            st.success(f"Bild wurde in der Galerie gespeichert als: {filename}")
+            st.success(f"Bild wurde in der Kategorie '{label}' gespeichert")
 
 
-# ===== Seite: Galerie =====
+# ===== Seite: Galerie (alle Bilder anzeigen) =====
 elif page == "Galerie":
 
     st.title("Galerie (≥90% sichere Bilder)")
 
-    images = os.listdir(GALLERY_DIR)
+    all_images = []
 
-    if len(images) > 0:
+    # Alle Bilder aus allen Kategorien sammeln
+    for folder in os.listdir(GALLERY_DIR):
+        folder_path = os.path.join(GALLERY_DIR, folder)
+
+        if os.path.isdir(folder_path):
+            for img in os.listdir(folder_path):
+                all_images.append(os.path.join(folder_path, img))
+
+    if len(all_images) > 0:
+
+        cols = st.columns(4)
+
+        for i, path in enumerate(all_images):
+
+            caption = os.path.basename(path).replace("_", " ").replace(".png", "")
+
+            with cols[i % 4]:
+                st.image(path, caption=caption)
+
+    else:
+        st.write("Noch keine Bilder in der Galerie.")
+
+
+# ===== Seite: Bilder suchen (Kategorien anzeigen) =====
+elif page == "Bilder suchen":
+
+    st.title("Bilder nach Kategorie durchsuchen")
+
+    categories = [
+        folder for folder in os.listdir(GALLERY_DIR)
+        if os.path.isdir(os.path.join(GALLERY_DIR, folder))
+    ]
+
+    if categories:
+
+        selected_category = st.selectbox(
+            "Kategorie auswählen",
+            categories
+        )
+
+        category_path = os.path.join(GALLERY_DIR, selected_category)
+        images = os.listdir(category_path)
+
+        st.subheader(f"Bilder in Kategorie: {selected_category}")
 
         cols = st.columns(4)
 
         for i, img in enumerate(images):
-            path = os.path.join(GALLERY_DIR, img)
+
+            path = os.path.join(category_path, img)
 
             with cols[i % 4]:
                 st.image(
@@ -78,37 +129,4 @@ elif page == "Galerie":
                 )
 
     else:
-        st.write("Noch keine Bilder in der Galerie.")
-
-
-# ===== Seite: Bilder suchen =====
-elif page == "Bilder suchen":
-
-    st.title("Bilder suchen")
-
-    search = st.text_input("Nach Objekt suchen (z.B. dog, cat, car)")
-
-    images = os.listdir(GALLERY_DIR)
-
-    if search:
-
-        results = [
-            img for img in images
-            if search.lower() in img.lower()
-        ]
-
-        if results:
-
-            cols = st.columns(4)
-
-            for i, img in enumerate(results):
-                path = os.path.join(GALLERY_DIR, img)
-
-                with cols[i % 4]:
-                    st.image(
-                        path,
-                        caption=img.replace("_", " ").replace(".png", "")
-                    )
-
-        else:
-            st.write("Keine passenden Bilder gefunden.")
+        st.write("Noch keine Kategorien vorhanden.")
