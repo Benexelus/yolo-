@@ -27,6 +27,14 @@ if page == "Bilder hochladen":
     st.title("Bild hochladen → KI sagt was drauf ist")
     st.write("Funktioniert mit fast allen Alltagsdingen (ImageNet-Klassen)")
 
+    # ===== NEU: Schwellenwert-Slider =====
+    threshold = st.slider(
+        "Minimale Sicherheit zum Speichern des Bildes (%)",
+        min_value=50,
+        max_value=99,
+        value=90
+    ) / 100
+
     uploaded_file = st.file_uploader(
         "Wähl ein JPG/PNG/JPEG aus",
         type=["jpg", "jpeg", "png"]
@@ -47,31 +55,40 @@ if page == "Bilder hochladen":
 
         best = results[0]
 
-        if best["score"] >= 0.90:
+        # ===== Speicherung abhängig vom Slider =====
+        if best["score"] >= threshold:
+
             label = best["label"].replace(" ", "_")
 
-            # ===== NEU: Kategorie-Ordner erstellen =====
+            # Kategorieordner erstellen
             category_folder = os.path.join(GALLERY_DIR, label)
             os.makedirs(category_folder, exist_ok=True)
 
-            # Dateiname erzeugen (damit nichts überschrieben wird)
+            # Dateiname erzeugen
             existing = len(os.listdir(category_folder))
             filename = f"{label}_{existing+1}.png"
             filepath = os.path.join(category_folder, filename)
 
             image.save(filepath)
 
-            st.success(f"Bild wurde in der Kategorie '{label}' gespeichert")
+            st.success(
+                f"Bild wurde in der Kategorie '{label}' gespeichert "
+                f"(Schwelle: {int(threshold*100)}%)"
+            )
+        else:
+            st.warning(
+                f"Bild nicht gespeichert – KI war nur {best['score']:.1%} sicher "
+                f"(Schwelle: {int(threshold*100)}%)"
+            )
 
 
 # ===== Seite: Galerie (alle Bilder anzeigen) =====
 elif page == "Galerie":
 
-    st.title("Galerie (≥90% sichere Bilder)")
+    st.title("Galerie")
 
     all_images = []
 
-    # Alle Bilder aus allen Kategorien sammeln
     for folder in os.listdir(GALLERY_DIR):
         folder_path = os.path.join(GALLERY_DIR, folder)
 
